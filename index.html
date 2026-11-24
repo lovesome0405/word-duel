@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>단어 유사도 대결</title>
+<meta name="description" content="2~4명이 각자 기기로 들어와 하는 단어 유사도 추리 게임. 출제자는 95% 이상 가까운 힌트만 낼 수 있다.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE occasion: 서바이벌 예능의 한 판 대결
+   IDEA 게임쇼 스튜디오: 왼쪽은 진행 데스크(내 할 일), 오른쪽은 힌트가 쌓이는 전광판
+   PICTURE 힌트 체인 전광판: 힌트마다 95~100% 막대와 그 힌트에 대한 각자의 추측 막대
+   COLOUR 검붉은 바닥, 진홍 띠, 상아색 강조, 플레이어 4색
+   TYPE Black Han Sans + IBM Plex Sans KR
+   LAYOUT 상단 띠(방 코드·참가자) → 데스크 | 전광판 2단. 760px 이하에서 한 줄로 쌓음 */
+:root{color-scheme:dark;--bg:#141011;--panel:#1f1719;--line:#3b2c30;--ink:#f6efe8;--mute:#b9a9a3;--red:#a3122c;--red2:#7c0d21;--ivory:#fff1d2;--warn:#ffb4a8;--ok:#7ee0a0}
+*{box-sizing:border-box;min-width:0}
+html,body{min-height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "IBM Plex Sans KR",system-ui,sans-serif;overflow-x:clip}
+h1,h2,.big,.hw{font-family:"Black Han Sans","IBM Plex Sans KR",sans-serif;font-weight:400;line-height:1.1;margin:0}
+h1{font-size:clamp(26px,4vw,36px)}
+h2{font-size:clamp(22px,3vw,28px);margin-bottom:6px;text-wrap:balance}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:max(16px,4vw)}
+.screen{display:none}.screen.on{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:clamp(16px,2.6vw,26px)}
+label{display:block;font-weight:600;font-size:15px}
+input,select{font:inherit;font-size:17px;color:var(--ink);background:#0d0a0b;border:1px solid #5a454a;border-radius:10px;padding:10px 14px;min-height:48px;width:100%;margin-top:6px}
+input:focus,select:focus,button:focus-visible{outline:3px solid var(--ivory);outline-offset:2px}
+button{font:inherit;font-weight:700;border:0;border-radius:10px;min-height:48px;padding:0 20px;cursor:pointer;background:var(--ivory);color:#2a0b12;white-space:nowrap}
+button:hover{filter:brightness(1.06)}button:active{transform:translateY(1px)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.ghost{background:transparent;color:var(--ink);border:1px solid #6a5359}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:end}.row>input{flex:1 1 200px}
+.note{color:var(--mute);font-size:14px;margin:4px 0}
+.err{color:var(--warn);font-weight:600;min-height:1.4em;margin:6px 0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:14px 0}
+/* 첫 화면 */
+.hero{background:var(--red2);border-bottom:3px solid var(--red)}
+.hero .wrap{padding-block:clamp(28px,6vw,64px);display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:clamp(20px,4vw,48px);align-items:center}
+.hero h1{font-size:clamp(36px,6vw,60px)}
+.hero p{max-width:34em}
+.rules{margin:12px 0 0;padding-left:1.2em}.rules li{margin:4px 0}
+.home-form{display:grid;gap:12px}
+.home-form .row button{flex:1 1 140px}
+.credit{color:var(--mute);font-size:13px;padding-block:24px}
+.credit a{color:var(--ivory)}
+/* 방 */
+.top{background:var(--red2);border-bottom:3px solid var(--red)}
+.top .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding-block:12px}
+.code{font-family:"Black Han Sans";font-size:30px;letter-spacing:.08em;background:#0006;border-radius:10px;padding:2px 14px}
+.top .grow{margin-right:auto;display:grid}
+.top small{color:#ffd9d2;font-size:13px}
+.players{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.players li{display:flex;align-items:center;gap:8px;background:#0006;border-radius:999px;padding:4px 12px 4px 6px;font-weight:600;white-space:nowrap}
+.players li.off{opacity:.45}.players li.setter{outline:2px dashed var(--ivory);outline-offset:1px}
+.players b{font-family:"Black Han Sans";font-weight:400;font-size:18px}
+.players .nm{font-size:14px}
+.dot{width:26px;height:26px;border-radius:50%;display:inline-grid;place-items:center;color:#1a1012;font-weight:700;font-size:13px;flex:none;border:2px solid #fff8}
+.desk{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;padding-block:20px 48px;align-items:start}
+.desk.solo{grid-template-columns:minmax(0,1fr)}
+#roundLine{font-weight:600;color:var(--ivory);margin:0 0 10px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin:14px 0}
+.card5{min-height:84px;font-family:"Black Han Sans";font-weight:400;font-size:24px;background:var(--red);color:var(--ivory);border:2px solid #ffffff22}
+.secret{color:var(--ivory);font-size:18px}
+.chip{min-height:36px;padding:0 12px;font-size:14px}
+.tools{margin-top:16px;padding-top:12px;border-top:1px solid var(--line)}
+.who{font-weight:700;font-size:18px;margin:0}
+.big{font-size:clamp(48px,9vw,84px);color:var(--ivory);margin:8px 0}
+.nb{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 16px;padding:0;list-style:none}
+.nb li{background:#0d0a0b;border-radius:999px;padding:6px 14px;white-space:nowrap}.nb small{color:var(--mute);margin-left:6px}
+.final{list-style:none;padding:0;margin:12px 0 16px;display:grid;gap:8px}
+.final li{display:flex;align-items:center;gap:10px;background:#0d0a0b;border-radius:10px;padding:10px 14px;font-size:18px}
+.final li b{margin-left:auto;font-family:"Black Han Sans";font-weight:400;font-size:22px}
+.final li:first-child{outline:2px solid var(--ivory)}
+/* 전광판 */
+.board{background:var(--red);border-radius:16px;padding:16px;box-shadow:inset 0 -6px 0 #0003}
+.board h2{color:var(--ivory)}
+.timeline{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:10px}
+.timeline .empty{color:#ffe1db;font-size:15px}
+.hint{background:#00000040;border-radius:12px;padding:12px}
+.hhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.hno{font-size:13px;color:#ffd9d2}.hw{font-size:26px;color:var(--ivory)}.hp{margin-left:auto;font-weight:600;white-space:nowrap}
+.bar,.gbar{display:block;height:8px;border-radius:4px;background:#0006;overflow:hidden;margin-top:6px}
+.bar i,.gbar i{display:block;height:100%;background:var(--ivory);border-radius:4px;transition:width .6s}
+.gl{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px}
+.gl li{display:grid;grid-template-columns:auto 5em minmax(0,1fr) auto;gap:2px 8px;align-items:center;font-size:15px}
+.gl li .dot{width:22px;height:22px;font-size:11px;border-width:1px}
+.gl li span:nth-child(2){color:#ffe1db;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gl li em{font-style:normal;font-size:13px;white-space:nowrap}
+.gl li .gbar{grid-column:2/-1;margin-top:0;height:6px}
+.gl li .gbar i{background:#ffd9d2}
+.gl li.ok b{color:var(--ok)}.gl li.ok .gbar i{background:var(--ok)}
+.hint .note{color:#ffe1db}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ivory);color:#2a0b12;padding:10px 18px;border-radius:10px;font-weight:700;max-width:90vw;overflow-wrap:anywhere;z-index:9}
+@media (prefers-reduced-motion:reduce){.bar i,.gbar i{transition:none}}
+@media(max-width:760px){.hero .wrap,.desk{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.code{font-size:24px}.gl li{grid-template-columns:auto 3.6em minmax(0,1fr) auto}}
+</style>
+</head>
+<body>
+<section class="screen on" id="s-home">
+  <div class="hero"><div class="wrap">
+    <div>
+      <h1>단어 유사도 대결</h1>
+      <p>한 명이 쉬운 단어 5개 중 하나를 몰래 고르고, 정답과 <b>95% 이상</b> 가까운 단어로만 힌트를 줘. 나머지는 힌트를 보고 정답을 맞혀.</p>
+      <ol class="rules">
+        <li>2~4명, 각자 자기 폰이나 PC로 같은 방 코드에 들어와.</li>
+        <li>힌트가 나올 때마다 도전자 전원이 한 단어씩 동시에 제출해.</li>
+        <li>맞힌 사람은 +2점. 정해진 힌트를 다 써도 아무도 못 맞히면 출제자 +2점.</li>
+        <li>유사도 퍼센트는 정답과 가까운 순위로 계산해: 1위 100%, 51위 95%, 1000위 밖 0%.</li>
+      </ol>
+    </div>
+    <form class="card home-form" id="homeForm" autocomplete="off">
+      <label for="nameIn">내 이름<input id="nameIn" maxlength="8" placeholder="예: 주상"></label>
+      <button type="submit" value="create">새 방 만들기</button>
+      <label for="codeIn">또는 방 코드로 참가<input id="codeIn" maxlength="4" placeholder="4자리 코드" style="text-transform:uppercase"></label>
+      <button type="submit" value="join" class="ghost">참가하기</button>
+      <p class="err" id="homeErr"></p>
+      <p class="note" id="dictState">사전 불러오는 중… (약 10MB)</p>
+    </form>
+  </div></div>
+  <p class="wrap credit">단어 벡터: fastText cc.ko.300 (Facebook AI, CC BY-SA 3.0) · 정답 후보 단어 목록과 구조 참고: <a href="https://github.com/jhleekr/semantle-koo">꼬오맨틀</a>(GPL-3.0) · 이 게임도 GPL-3.0으로 공개돼.</p>
+</section>
+
+<section class="screen" id="s-room">
+  <header class="top"><div class="wrap">
+    <div class="grow"><small>방 코드</small><span class="code" id="roomCode">----</span></div>
+    <button class="ghost" id="copyLink" type="button">초대 링크 복사</button>
+    <ul class="players" id="players"></ul>
+    <small id="conn">연결 중…</small><small id="spect"></small>
+  </div></header>
+  <main class="wrap desk">
+    <section class="card"><p id="roundLine"></p><div id="stage"></div></section>
+    <section class="board" id="board" hidden><h2>힌트 전광판</h2><ul class="timeline" id="timeline"></ul></section>
+  </main>
+</section>
+<div id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="js/config.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

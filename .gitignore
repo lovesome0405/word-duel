@@ -1,0 +1,23 @@
+# 비밀·환경 파일
+.env
+.env.*
+*.pem
+*.key
+supabase/.temp/
+
+# 원본 대용량 데이터 (tools/ 스크립트 입력)
+*.bin.gz
+model.bin
+cc.ko.300.*
+*.npy
+*.pkl
+
+# 로컬·테스트 산출물
+__pycache__/
+*.pyc
+shots/
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+node_modules/
